@@ -1,5 +1,5 @@
 module Main where
-
+import Prelude hiding (init)
 import Graphics3D
 import Graphics.Gloss
 import Graphics.Gloss.Interface.Pure.Game
@@ -52,15 +52,25 @@ movePlayer :: Player -> KeySet -> Player
 movePlayer (Player (DPoint x y z) ro ra) (KeySet u d l r f b rl rr ru rd)
     = (Player (DPoint x' y' z') ro' ra')
         where 
-            y' = moveu u (moved d y) 
-            x' = moveu r (moved l x)
-            z' = moveu f (moved b z) -- TODO have it move based in the rotation, IE forward moves the direction the camera is pointing
-            ro' = moveru rr (moverd rl ro)
-            ra' = moveru ru (moverd rd ra)
-            moveu t v = if (t) then v+(0.5) else v
-            moved t v = if (t) then v-(0.5) else v
+            moveu t = if (t) then (0.5) else 0
+            moved t = if (t) then (-1 * 0.5) else 0
             moveru t v = if (t) then checkRotate (v+(pi/64)) else v
             moverd t v = if (t) then checkRotate (v-(pi/64)) else v
+
+            -- We will need the rotations for everything else
+            ro' = moveru rr (moverd rl ro)
+            ra' = moveru ru (moverd rd ra)
+
+            -- How much the points should move by
+            y'' = (moveu u) + (moved d) 
+            x'' = (moveu r) + (moved l)
+            z'' = (moveu f) + (moved b)
+
+            -- Movement based off rotation 
+            y' = y + y'' -- No rotation movement for y for now. Camera moves like a person.
+            x' = x + (z'')*(sin ro') + (x'')*(sin (ro' + (pi/2)))
+            z' = z + (z'')*(cos ro') + (x'')*(cos (ro'+ (pi/2)))
+
             checkRotate :: Float -> Float -- makes sure v conforms to unit circle.
             checkRotate v = 
                 if (v > 2*pi)
@@ -68,7 +78,7 @@ movePlayer (Player (DPoint x y z) ro ra) (KeySet u d l r f b rl rr ru rd)
                     else if (v < 0)
                         then ((2*pi) - v)
                         else v
-            
+
 
 -- x left right, z forward backward, y up down, r rotate left right
 -- Takes key input for the game, most just move the player.
@@ -97,20 +107,20 @@ handleKeys (EventKey (Char 'x') Down _ _) (Game k p t) = (Game (KeySet u True l 
     where (KeySet u d l r f b rl rr ru rd) = k
 handleKeys (EventKey (Char 'x') up _ _) (Game k p t)= (Game (KeySet u False l r f b rl rr ru rd) p t)
     where (KeySet u d l r f b rl rr ru rd) = k
-handleKeys (EventKey (Char 'q') Down _ _) (Game k p t) = (Game (KeySet u d l r f b True rr ru rd) p t)
+handleKeys (EventKey (SpecialKey KeyLeft) Down _ _) (Game k p t) = (Game (KeySet u d l r f b True rr ru rd) p t)
     where (KeySet u d l r f b rl rr ru rd) = k
-handleKeys (EventKey (Char 'q') up _ _) (Game k p t)= (Game (KeySet u d l r f b False rr ru rd) p t)
+handleKeys (EventKey (SpecialKey KeyLeft) up _ _) (Game k p t)= (Game (KeySet u d l r f b False rr ru rd) p t)
     where (KeySet u d l r f b rl rr ru rd) = k
-handleKeys (EventKey (Char 'e') Down _ _) (Game k p t) = (Game (KeySet u d l r f b rl True ru rd) p t)
+handleKeys (EventKey (SpecialKey KeyRight) Down _ _) (Game k p t) = (Game (KeySet u d l r f b rl True ru rd) p t)
     where (KeySet u d l r f b rl rr ru rd) = k
-handleKeys (EventKey (Char 'e') up _ _) (Game k p t)= (Game (KeySet u d l r f b rl False ru rd) p t)
+handleKeys (EventKey (SpecialKey KeyRight) up _ _) (Game k p t)= (Game (KeySet u d l r f b rl False ru rd) p t)
     where (KeySet u d l r f b rl rr ru rd) = k
-handleKeys (EventKey (Char 'r') Down _ _) (Game k p t) = (Game (KeySet u d l r f b rl rr True rd) p t)
+handleKeys (EventKey (SpecialKey KeyUp) Down _ _) (Game k p t) = (Game (KeySet u d l r f b rl rr True rd) p t)
     where (KeySet u d l r f b rl rr ru rd) = k
-handleKeys (EventKey (Char 'r') up _ _) (Game k p t)= (Game (KeySet u d l r f b rl rr False rd) p t)
+handleKeys (EventKey (SpecialKey KeyUp) up _ _) (Game k p t)= (Game (KeySet u d l r f b rl rr False rd) p t)
     where (KeySet u d l r f b rl rr ru rd) = k
-handleKeys (EventKey (Char 'f') Down _ _) (Game k p t) = (Game (KeySet u d l r f b rl rr ru True) p t)
+handleKeys (EventKey (SpecialKey KeyDown) Down _ _) (Game k p t) = (Game (KeySet u d l r f b rl rr ru True) p t)
     where (KeySet u d l r f b rl rr ru rd) = k
-handleKeys (EventKey (Char 'f') up _ _) (Game k p t)= (Game (KeySet u d l r f b rl rr ru False) p t)
+handleKeys (EventKey (SpecialKey KeyDown) up _ _) (Game k p t)= (Game (KeySet u d l r f b rl rr ru False) p t)
     where (KeySet u d l r f b rl rr ru rd) = k
 handleKeys _ g = g

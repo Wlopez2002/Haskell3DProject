@@ -20,7 +20,7 @@ executable Haskell3DProject
     other-modules:    Graphics3D
 
     build-depends:    base, gloss
-
+    
     hs-source-dirs:   exe
     
     default-language: Haskell2010

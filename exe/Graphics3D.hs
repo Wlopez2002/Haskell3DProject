@@ -26,15 +26,12 @@ data Player = Player {
     rotationUD :: Float -- radians
 }
 
-
 data DSquare = DSquare {sp1 :: DPoint,sp2 :: DPoint,sp3 :: DPoint,sp4 :: DPoint, c :: Color}
 instance Renderable DSquare where
     draw square (Player playerPoint rl ud) = 
         -- if every point is behind the player do not draw the square.
         if (isBehind rp1 && isBehind rp2 && isBehind rp3 && isBehind rp4)
             then
-                -- TODO: there is an issue with squares perpendicular to the camera. it tries to draw
-                -- parts of the square even when it is behind the camera.
                 Polygon [(0,0)]
             else 
                 color c $ Polygon [(projDP rp1), (projDP rp2), (projDP rp3), (projDP rp4)]  
@@ -54,34 +51,34 @@ instance Renderable DSquare where
             rp3 = rotateDP (getDiff sp3 playerPoint) rl ud
             rp4 = rotateDP (getDiff sp4 playerPoint) rl ud
 
-             -- projects the DPoint into a 2d plane
-             -- use screen dimensions/2 for weights, currently 400 and 300.
+            -- projects the DPoint into a 2d plane
+            -- use screen dimensions/2 for weights, currently 400 and 300.
             projDP :: DPoint -> (Float, Float)
             projDP (DPoint x y z) = 
                 if (z < 1) -- There are two 'odd' cases, when z is between 1 and -1 and when z is negative.
                     then if (z < 0)
-                         -- Case where z is negative, I just flip the sign.
-                         -- Not sure if that is actualy a good choice
-                        then (400*(x/(abs z)),300*(y/(abs z)))
-                         -- not sure what to do then -1 < z < 1
-                         -- for now i just have it use z = 1
+                        -- Case where z is negative, mult instead of
+                        -- div, and use abs z.
+                        then (400*(x*(abs z)),300*(y*(abs z)))
+                        -- not sure what to do then -1 < z < 1
+                        -- for now i just have it use z = 1
                         else (400*(x),300*(y))
                     else (400*(x/z),300*(y/z))
-
-            --Rotates a point around the origin by r radians
-            rotateDP :: DPoint -> Float -> Float -> DPoint
-            rotateDP (DPoint x y z) rl ud =
-                let
-                    x' = (x * cos(rl)) - (z * sin(rl)) -- Look left right
-                    z' = (z * cos(rl)) + (x * sin(rl))
-
-                    y' = (y * cos(ud)) - (z' * sin(ud)) -- Look up down
-                    z'' = (z' * cos(ud)) + (y * sin(ud))
-                    in DPoint x' y' z''
 
             -- checks if a Dpoint is behind the player. Use for relative Dpoint
             isBehind :: DPoint -> Bool
             isBehind (DPoint x y z) = if (z <= 0) then True else False
+
+--Rotates a point around the origin by r radians
+rotateDP :: DPoint -> Float -> Float -> DPoint
+rotateDP (DPoint x y z) rl ud =
+    let
+        x' = (x * cos(rl)) - (z * sin(rl)) -- Look left right
+        z' = (z * cos(rl)) + (x * sin(rl))
+
+        y' = (y * cos(ud)) - (z' * sin(ud)) -- Look up down
+        z'' = (z' * cos(ud)) + (y * sin(ud))
+        in DPoint x' y' z''
 
 -- Gets the distance between two DPoints
 getDistance :: DPoint -> DPoint -> Float
