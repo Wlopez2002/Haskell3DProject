@@ -1,9 +1,14 @@
 module Graphics3D where
 
+import Base3D
 import Graphics.Gloss
 import Graphics.Gloss.Interface.Pure.Game
 import Data.List (sortBy)
 import Data.Function (on)
+
+{-
+This file contains all the needed code to handle graphics.
+-}
 
 class Renderable a where
     -- draw takes the Renderable class, the players point and produces a picture
@@ -13,18 +18,11 @@ class Renderable a where
     -- it's location.
     draw :: a -> Player -> Picture
 
-data DPoint = DPoint {x :: Float, y :: Float, z :: Float}
 instance Renderable DPoint where
     draw (DPoint x y z) (Player (DPoint px 0 pz) rl ud) = scale 1 1 $ translate px 0 $ circleSolid 2
     draw (DPoint x y z) (Player (DPoint px py pz) rl ud) = scale py py $ translate px 0 $ circleSolid 2
 instance Show DPoint where
     show (DPoint x y z) = "(" ++ show x ++ "," ++ show y ++ "," ++ show z ++ ")"
-
-data Player = Player {
-    location :: DPoint,
-    rotationLR :: Float, -- radians
-    rotationUD :: Float -- radians
-}
 
 data DSquare = DSquare {sp1 :: DPoint,sp2 :: DPoint,sp3 :: DPoint,sp4 :: DPoint, c :: Color}
 instance Renderable DSquare where
@@ -80,19 +78,9 @@ rotateDP (DPoint x y z) rl ud =
         z'' = (z' * cos(ud)) + (y * sin(ud))
         in DPoint x' y' z''
 
--- Gets the distance between two DPoints
-getDistance :: DPoint -> DPoint -> Float
-getDistance (DPoint x1 y1 z1) (DPoint x2 y2 z2) =
-    sqrt((x2-x1)*(x2-x1)+(y2-y1)*(y2-y1)+(z2-z1)*(z2-z1))
-
 sortDSquares :: DPoint -> [DSquare] -> [DSquare]
 sortDSquares pl sqrs = fst $ unzip $ sortBy (flip compare `on` snd) (zip sqrs (map (squareDistance pl) sqrs))
 
 -- Gets the average distance of the points of a DSquare from some point
 squareDistance :: DPoint -> DSquare -> Float
 squareDistance dp (DSquare p1 p2 p3 p4 c) = ((getDistance dp p1)+(getDistance dp p2)+(getDistance dp p3)+(getDistance dp p4))/4
-
--- Gets the difference between two DPoints
-getDiff :: DPoint -> DPoint -> DPoint 
-getDiff (DPoint x2 y2 z2) (DPoint x1 y1 z1) =
-    (DPoint (x2-x1) (y2-y1) (z2-z1))

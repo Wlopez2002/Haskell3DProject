@@ -17,7 +17,7 @@ executable Haskell3DProject
 
     main-is:          "Main.hs"
 
-    other-modules:    Graphics3D
+    other-modules:    Graphics3D, Base3D, Physics3D
 
     build-depends:    base, gloss
     
