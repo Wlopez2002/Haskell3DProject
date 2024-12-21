@@ -35,44 +35,29 @@ render game =
         (Player (DPoint x y z) rl ud) = player
 
 -- Used to move the player
+-- Collisions sorta work, they are finicky
 itter :: Float -> Game -> Game
-itter dt (Game k p t w) = 
-    -- TODO add a check for if we can enter the collider
-    -- there is also the issue where it freezes when it collides
-    -- I think this needs to be moved into movePlayer to eat movement
-    -- that would trigger then collider.
-    if and (map (boxIntersects pcol) w)
-    --then (Game k (Player (DPoint (-4) 0 (-4)) rl ud) t w) 
-    then (Game k (Player pp rl ud) t w) 
-    else (Game k nextP (sortDSquares pp t) w)
+itter dt (Game k p t w) = (Game k (Player (DPoint x' y' z') nrl nud) (sortDSquares pp t) w) 
     where 
-        pcol = boxAroundPoint False id pp 0 4 0
         nextP = movePlayer p k
+        (Player (DPoint nx ny nz) nrl nud) = nextP
         (Player pp rl ud) = p
-
-main :: IO ()
-main = play window white 60 initial render handleKeys itter
-    where
-        wal1 = (DSquare (DPoint 0 (-10) 1) (DPoint 0 10 1) (DPoint 10 10 11) (DPoint 10 (-10) 11) blue)
-        wal2 = (DSquare (DPoint 0 (-10) 1) (DPoint 0 10 1) (DPoint (-10) 10 11) (DPoint (-10) (-10) 11) red)
-        wal3 = (DSquare (DPoint 0 10 1) (DPoint 10 10 11) (DPoint 0 10 21) (DPoint (-10) 10 11) yellow)
-        collid = 
-            (CollisionBox
-                False
-                id
-                (DPoint 0 10 1) (DPoint 0 (-10) 1) (DPoint 10 10 11) (DPoint 10 (-10) 11)
-                (DPoint 0 10 21) (DPoint (-10) 10 11) (DPoint 0 (-10) 21) (DPoint (-10) (-10) 11)
-            )
-        initial = (Game emptyKeySet (Player (DPoint 0 0 0) 0 0) [wal3, wal2, wal1] [collid])
-        --initial = (Game emptyKeySet (Player (DPoint 0 0 0) 0 0) [wal3])
+        (DPoint oldx oldy oldz) = pp
+        xcol = boxAroundPoint False id (DPoint nx oldy oldz) 0 4 0
+        ycol = boxAroundPoint False id (DPoint oldx ny oldz) 0 4 0
+        zcol = boxAroundPoint False id (DPoint oldx oldy nz) 0 4 0
+        x' = if (and (map (boxIntersects xcol) w)) then oldx else nx
+        y' = if (and (map (boxIntersects ycol) w)) then oldy else ny
+        z' = if (and (map (boxIntersects zcol) w)) then oldz else nz
 
 
 -- Takes a point and moves it based on a KeySet.
--- TODO account for rotation of player when moving in a direction.
+-- It is overcomplicated and could use future revisions
 movePlayer :: Player -> KeySet -> Player
 movePlayer (Player (DPoint x y z) ro ra) (KeySet u d l r f b rl rr ru rd)
     = (Player (DPoint x' y' z') ro' ra')
         where 
+            gravity = 0.2
             moveu t = if (t) then (0.5) else 0
             moved t = if (t) then (-1 * 0.5) else 0
             moveru t v = if (t) then checkRotate (v+(pi/64)) else v
@@ -89,7 +74,7 @@ movePlayer (Player (DPoint x y z) ro ra) (KeySet u d l r f b rl rr ru rd)
                         else ra
 
             -- How much the points should move by
-            y'' = (moveu u) + (moved d) 
+            y'' = (moveu u) + (moved d) - gravity
             x'' = (moveu r) + (moved l)
             z'' = (moveu f) + (moved b)
 
@@ -105,6 +90,22 @@ movePlayer (Player (DPoint x y z) ro ra) (KeySet u d l r f b rl rr ru rd)
                     else if (v < 0)
                         then ((2*pi) - v)
                         else v
+                        
+main :: IO ()
+main = play window white 30 initial render handleKeys itter
+    where
+        wal1 = (DSquare (DPoint 0 (-10) 1) (DPoint 0 10 1) (DPoint 10 10 11) (DPoint 10 (-10) 11) blue)
+        wal2 = (DSquare (DPoint 0 (-10) 1) (DPoint 0 10 1) (DPoint (-10) 10 11) (DPoint (-10) (-10) 11) red)
+        wal3 = (DSquare (DPoint 0 10 1) (DPoint 10 10 11) (DPoint 0 10 21) (DPoint (-10) 10 11) yellow)
+        collid = 
+            (CollisionBox
+                False
+                id
+                (DPoint 0 10 1) (DPoint 0 (-10) 1) (DPoint 10 10 11) (DPoint 10 (-10) 11)
+                (DPoint 0 10 21) (DPoint (-10) 10 11) (DPoint 0 (-10) 21) (DPoint (-10) (-10) 11)
+            )
+        initial = (Game emptyKeySet (Player (DPoint 0 0 0) 0 0) [wal3, wal2, wal1] [collid])
+        --initial = (Game emptyKeySet (Player (DPoint 0 0 0) 0 0) [wal3])
 
 
 -- x left right, z forward backward, y up down, r rotate left right
