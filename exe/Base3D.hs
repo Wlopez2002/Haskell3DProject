@@ -15,6 +15,17 @@ data Player = Player {
     rotationUD :: Float -- radians
 }
 
+--Rotates a point around the origin by r radians
+rotateDP :: DPoint -> Float -> Float -> DPoint
+rotateDP (DPoint x y z) rl ud =
+    let
+        x' = (x * cos(rl)) - (z * sin(rl)) -- Look left right
+        z' = (z * cos(rl)) + (x * sin(rl))
+
+        y' = (y * cos(ud)) - (z' * sin(ud)) -- Look up down
+        z'' = (z' * cos(ud)) + (y * sin(ud))
+        in DPoint x' y' z''
+
 -- Gets the distance between two DPoints
 getDistance :: DPoint -> DPoint -> Float
 getDistance (DPoint x1 y1 z1) (DPoint x2 y2 z2) =
@@ -24,3 +35,7 @@ getDistance (DPoint x1 y1 z1) (DPoint x2 y2 z2) =
 getDiff :: DPoint -> DPoint -> DPoint 
 getDiff (DPoint x2 y2 z2) (DPoint x1 y1 z1) =
     (DPoint (x2-x1) (y2-y1) (z2-z1))
+
+addDP :: DPoint -> DPoint -> DPoint 
+addDP (DPoint x2 y2 z2) (DPoint x1 y1 z1) =
+    (DPoint (x2+x1) (y2+y1) (z2+z1))

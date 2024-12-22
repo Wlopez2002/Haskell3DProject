@@ -10,8 +10,9 @@ interactions.
 -- A box that defines colision. It holds a function
 -- Player -> Player in case that is needed.
 data CollisionBox = CollisionBox {
-    canEnter :: Bool,
-    func :: Player -> Player,
+    bcanEnter :: Bool,
+    bfunc :: Player -> Player,
+    borigin :: DPoint,
     p1 :: DPoint,
     p2 :: DPoint,
     p3 :: DPoint,
@@ -22,29 +23,82 @@ data CollisionBox = CollisionBox {
     p8 :: DPoint
 }
 
+-- Defines a circle for collision
+data CollisionCircle = CollisionCircle {
+    ccanEnter :: Bool,
+    cfunc :: Player -> Player,
+    corigin :: DPoint,
+    radius :: Float
+}
+
+data Collider = ColBox CollisionBox | ColCir CollisionCircle
+
+-- rotates a collider horizontally.
+-- TODO: Add rotation for circle collider
+rotateColliderH :: Float -> Collider -> Collider
+rotateColliderH rl (ColBox box) = ColBox (CollisionBox c f o rp1 rp2 rp3 rp4 rp5 rp6 rp7 rp8)
+    where
+        (CollisionBox c f o p1 p2 p3 p4 p5 p6 p7 p8) = box
+        -- RotateDP assumes an origin of zero, thus getDiff to get the position relative to the origin.
+        -- This means it must be made "unrelative" to the origin.
+        rp1 = addDP (rotateDP (getDiff p1 o) rl 0) o
+        rp2 = addDP (rotateDP (getDiff p2 o) rl 0) o
+        rp3 = addDP (rotateDP (getDiff p3 o) rl 0) o
+        rp4 = addDP (rotateDP (getDiff p4 o) rl 0) o
+        rp5 = addDP (rotateDP (getDiff p5 o) rl 0) o
+        rp6 = addDP (rotateDP (getDiff p6 o) rl 0) o
+        rp7 = addDP (rotateDP (getDiff p7 o) rl 0) o
+        rp8 = addDP (rotateDP (getDiff p8 o) rl 0) o
+
+
 -- Does not handle diagonal colliders, for now those will have to be manualy made.
-boxAroundPoint :: Bool -> (Player -> Player) -> DPoint -> Float -> Float -> Float -> CollisionBox
-boxAroundPoint c f (DPoint x y z) w h l = 
+boxAroundPoint :: Bool -> (Player -> Player) -> DPoint -> Float -> Float -> Float -> Float -> Collider
+boxAroundPoint c f (DPoint x y z) w h l offset = ColBox
     (CollisionBox
         c
         f
-        (DPoint (x + w) (y + h) (z + l))
-        (DPoint (x + w) (y + h) (z - l))
-        (DPoint (x + w) (y - h) (z + l))
-        (DPoint (x + w) (y - h) (z - l))
-        (DPoint (x - w) (y + h) (z + l))
-        (DPoint (x - w) (y + h) (z - l))
-        (DPoint (x - w) (y - h) (z + l))
-        (DPoint (x - w) (y - h) (z - l))
+        (DPoint x (y - offset) z)
+        (DPoint (x + w) (y + h - offset) (z + l))
+        (DPoint (x + w) (y + h - offset) (z - l))
+        (DPoint (x + w) (y - h - offset) (z + l))
+        (DPoint (x + w) (y - h - offset) (z - l))
+        (DPoint (x - w) (y + h - offset) (z + l))
+        (DPoint (x - w) (y + h - offset) (z - l))
+        (DPoint (x - w) (y - h - offset) (z + l))
+        (DPoint (x - w) (y - h - offset) (z - l))
     )
+
+circleAroundPoint :: Bool -> (Player -> Player) -> DPoint -> Float -> Float -> Collider
+circleAroundPoint c f (DPoint x y z) r offset = ColCir (CollisionCircle c f (DPoint x (y - offset) z) r)
+
+cIntersects :: Collider -> Collider -> Bool
+cIntersects (ColBox box1) (ColBox box2) = boxIntersects box1 box2
+cIntersects (ColCir cir) (ColBox box2) = or [d1,d2,d3,d4,d5,d6,d7,d8]
+    where
+        (CollisionCircle _ _ point radius) = cir
+        (CollisionBox _ _ _ p1 p2 p3 p4 p5 p6 p7 p8) = box2
+        
+        -- Calculates distance of every point
+        -- this does not work
+        d1 = check radius point p1
+        d2 = check radius point p2
+        d3 = check radius point p3
+        d4 = check radius point p4
+        d5 = check radius point p5
+        d6 = check radius point p6
+        d7 = check radius point p7
+        d8 = check radius point p8
+
+        check :: Float -> DPoint -> DPoint -> Bool
+        check r p d = abs((getDistance p d)) < r
 
 boxIntersects :: CollisionBox -> CollisionBox -> Bool
 boxIntersects b1 b2 = (check b1xmin b1xmax b2xmin b2xmax) && 
                       (check b1ymin b1ymax b2ymin b2ymax) && 
                       (check b1zmin b1zmax b2zmin b2zmax)
     where
-        (CollisionBox _ _ b1p1 b1p2 b1p3 b1p4 b1p5 b1p6 b1p7 b1p8) = b1
-        (CollisionBox _ _ b2p1 b2p2 b2p3 b2p4 b2p5 b2p6 b2p7 b2p8) = b2
+        (CollisionBox _ _ _ b1p1 b1p2 b1p3 b1p4 b1p5 b1p6 b1p7 b1p8) = b1
+        (CollisionBox _ _ _ b2p1 b2p2 b2p3 b2p4 b2p5 b2p6 b2p7 b2p8) = b2
         (DPoint b1p1x b1p1y b1p1z) = b1p1
         (DPoint b1p2x b1p2y b1p2z) = b1p2
         (DPoint b1p3x b1p3y b1p3z) = b1p3

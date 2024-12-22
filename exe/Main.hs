@@ -10,7 +10,7 @@ data Game = Game {
     keys :: KeySet,
     player :: Player,
     test :: [DSquare],
-    walls :: [CollisionBox]
+    walls :: [Collider]
 }
 
 data KeySet = KeySet {
@@ -35,7 +35,10 @@ render game =
         (Player (DPoint x y z) rl ud) = player
 
 -- Used to move the player
--- Collisions sorta work, they are finicky
+-- Collisions sorta work, they are finicky. I think a lot of the issues are due to
+-- the player collider being a box.
+-- TODO: Find a way to make a circular collider with only one point and values which
+-- determine it's size
 itter :: Float -> Game -> Game
 itter dt (Game k p t w) = (Game k (Player (DPoint x' y' z') nrl nud) (sortDSquares pp t) w) 
     where 
@@ -43,12 +46,18 @@ itter dt (Game k p t w) = (Game k (Player (DPoint x' y' z') nrl nud) (sortDSquar
         (Player (DPoint nx ny nz) nrl nud) = nextP
         (Player pp rl ud) = p
         (DPoint oldx oldy oldz) = pp
-        xcol = boxAroundPoint False id (DPoint nx oldy oldz) 0 4 0
-        ycol = boxAroundPoint False id (DPoint oldx ny oldz) 0 4 0
-        zcol = boxAroundPoint False id (DPoint oldx oldy nz) 0 4 0
-        x' = if (and (map (boxIntersects xcol) w)) then oldx else nx
-        y' = if (and (map (boxIntersects ycol) w)) then oldy else ny
-        z' = if (and (map (boxIntersects zcol) w)) then oldz else nz
+        --xcol = circleAroundPoint False id (DPoint nx oldy oldz) 10 10
+        --ycol = circleAroundPoint False id (DPoint oldx ny oldz) 10 10
+        --zcol = circleAroundPoint False id (DPoint oldx oldy nz) 10 10
+        --xcol = boxAroundPoint False id (DPoint nx oldy oldz) 0.5 5 0.5 10
+        --ycol = boxAroundPoint False id (DPoint oldx ny oldz) 0.5 5 0.5 10
+        --zcol = boxAroundPoint False id (DPoint oldx oldy nz) 0.5 5 0.5 10
+        xcol = rotateColliderH nrl (boxAroundPoint False id (DPoint nx oldy oldz) 0.5 5 0.5 10)
+        ycol = rotateColliderH nrl (boxAroundPoint False id (DPoint oldx ny oldz) 0.5 5 0.5 10)
+        zcol = rotateColliderH nrl (boxAroundPoint False id (DPoint oldx oldy nz) 0.5 5 0.5 10)
+        x' = if (or (map (cIntersects xcol) w)) then oldx else nx
+        y' = if (or (map (cIntersects ycol) w)) then oldy else ny
+        z' = if (or (map (cIntersects zcol) w)) then oldz else nz
 
 
 -- Takes a point and moves it based on a KeySet.
@@ -92,19 +101,29 @@ movePlayer (Player (DPoint x y z) ro ra) (KeySet u d l r f b rl rr ru rd)
                         else v
                         
 main :: IO ()
-main = play window white 30 initial render handleKeys itter
+main = play window white 60 initial render handleKeys itter
     where
         wal1 = (DSquare (DPoint 0 (-10) 1) (DPoint 0 10 1) (DPoint 10 10 11) (DPoint 10 (-10) 11) blue)
         wal2 = (DSquare (DPoint 0 (-10) 1) (DPoint 0 10 1) (DPoint (-10) 10 11) (DPoint (-10) (-10) 11) red)
         wal3 = (DSquare (DPoint 0 10 1) (DPoint 10 10 11) (DPoint 0 10 21) (DPoint (-10) 10 11) yellow)
-        collid = 
+        floor = (DSquare (DPoint 30 (-10) 30) (DPoint 30 (-10) (-30)) (DPoint (-30) (-10) (-30)) (DPoint (-30) (-10) 30) black)
+        collid = (ColBox
             (CollisionBox
                 False
                 id
+                (DPoint 0 10 1)
                 (DPoint 0 10 1) (DPoint 0 (-10) 1) (DPoint 10 10 11) (DPoint 10 (-10) 11)
                 (DPoint 0 10 21) (DPoint (-10) 10 11) (DPoint 0 (-10) 21) (DPoint (-10) (-10) 11)
-            )
-        initial = (Game emptyKeySet (Player (DPoint 0 0 0) 0 0) [wal3, wal2, wal1] [collid])
+            ))
+        colfloor = (ColBox
+            (CollisionBox
+                False
+                id
+                (DPoint 30 (-10) 30)
+                (DPoint 30 (-10) 30) (DPoint 30 (-10) (-30)) (DPoint (-30) (-10) (-30)) (DPoint (-30) (-10) 30)
+                (DPoint 30 (-11) 30) (DPoint 30 (-11) (-30)) (DPoint (-30) (-11) (-30)) (DPoint (-30) (-11) 30)
+            ))
+        initial = (Game emptyKeySet (Player (DPoint (0) 20 (0)) 0 0) [wal3, wal2, wal1, floor] [collid,colfloor])
         --initial = (Game emptyKeySet (Player (DPoint 0 0 0) 0 0) [wal3])
 
 

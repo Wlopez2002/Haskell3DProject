@@ -67,17 +67,6 @@ instance Renderable DSquare where
             isBehind :: DPoint -> Bool
             isBehind (DPoint x y z) = if (z <= 0) then True else False
 
---Rotates a point around the origin by r radians
-rotateDP :: DPoint -> Float -> Float -> DPoint
-rotateDP (DPoint x y z) rl ud =
-    let
-        x' = (x * cos(rl)) - (z * sin(rl)) -- Look left right
-        z' = (z * cos(rl)) + (x * sin(rl))
-
-        y' = (y * cos(ud)) - (z' * sin(ud)) -- Look up down
-        z'' = (z' * cos(ud)) + (y * sin(ud))
-        in DPoint x' y' z''
-
 sortDSquares :: DPoint -> [DSquare] -> [DSquare]
 sortDSquares pl sqrs = fst $ unzip $ sortBy (flip compare `on` snd) (zip sqrs (map (squareDistance pl) sqrs))
 
