@@ -9,7 +9,7 @@ import Graphics.Gloss.Interface.Pure.Game
 data Game = Game {
     keys :: KeySet,
     player :: Player,
-    test :: [DSquare],
+    draws :: [Rendr],
     walls :: [Collider]
 }
 
@@ -40,7 +40,7 @@ render game =
 -- TODO: Find a way to make a circular collider with only one point and values which
 -- determine it's size
 itter :: Float -> Game -> Game
-itter dt (Game k p t w) = (Game k (Player (DPoint x' y' z') nrl nud) (sortDSquares pp t) w) 
+itter dt (Game k p t w) = (Game k (Player (DPoint x' y' z') nrl nud) (sortDrawElements pp t) w) 
     where 
         nextP = movePlayer p k
         (Player (DPoint nx ny nz) nrl nud) = nextP
@@ -66,7 +66,7 @@ movePlayer :: Player -> KeySet -> Player
 movePlayer (Player (DPoint x y z) ro ra) (KeySet u d l r f b rl rr ru rd)
     = (Player (DPoint x' y' z') ro' ra')
         where 
-            gravity = 0.2
+            --gravity = 0.2 disabled for now
             moveu t = if (t) then (0.5) else 0
             moved t = if (t) then (-1 * 0.5) else 0
             moveru t v = if (t) then checkRotate (v+(pi/64)) else v
@@ -83,7 +83,7 @@ movePlayer (Player (DPoint x y z) ro ra) (KeySet u d l r f b rl rr ru rd)
                         else ra
 
             -- How much the points should move by
-            y'' = (moveu u) + (moved d) - gravity
+            y'' = (moveu u) + (moved d) -- - gravity
             x'' = (moveu r) + (moved l)
             z'' = (moveu f) + (moved b)
 
@@ -103,10 +103,11 @@ movePlayer (Player (DPoint x y z) ro ra) (KeySet u d l r f b rl rr ru rd)
 main :: IO ()
 main = play window white 60 initial render handleKeys itter
     where
-        wal1 = (DSquare (DPoint 0 (-10) 1) (DPoint 0 10 1) (DPoint 10 10 11) (DPoint 10 (-10) 11) blue)
-        wal2 = (DSquare (DPoint 0 (-10) 1) (DPoint 0 10 1) (DPoint (-10) 10 11) (DPoint (-10) (-10) 11) red)
-        wal3 = (DSquare (DPoint 0 10 1) (DPoint 10 10 11) (DPoint 0 10 21) (DPoint (-10) 10 11) yellow)
-        floor = (DSquare (DPoint 30 (-10) 30) (DPoint 30 (-10) (-30)) (DPoint (-30) (-10) (-30)) (DPoint (-30) (-10) 30) black)
+        wal1 = DSQR (DSquare (DPoint 0 (-10) 1) (DPoint 0 10 1) (DPoint 10 10 11) (DPoint 10 (-10) 11) blue)
+        wal2 = DSQR (DSquare (DPoint 0 (-10) 1) (DPoint 0 10 1) (DPoint (-10) 10 11) (DPoint (-10) (-10) 11) red)
+        wal3 = DSQR (DSquare (DPoint 0 10 1) (DPoint 10 10 11) (DPoint 0 10 21) (DPoint (-10) 10 11) yellow)
+        testSprite = SPRT (Sprite (DPoint 0 1 (-10)) [color red $ Polygon [(1000,1000),(1000,-1000),(-1000,-1000),(-1000,1000)], color green $ Polygon [(500,500),(500,-500),(-500,-500),(-500,500)]])
+        floor = DSQR (DSquare (DPoint 30 (-10) 30) (DPoint 30 (-10) (-30)) (DPoint (-30) (-10) (-30)) (DPoint (-30) (-10) 30) black)
         collid = (ColBox
             (CollisionBox
                 False
@@ -123,7 +124,7 @@ main = play window white 60 initial render handleKeys itter
                 (DPoint 30 (-10) 30) (DPoint 30 (-10) (-30)) (DPoint (-30) (-10) (-30)) (DPoint (-30) (-10) 30)
                 (DPoint 30 (-11) 30) (DPoint 30 (-11) (-30)) (DPoint (-30) (-11) (-30)) (DPoint (-30) (-11) 30)
             ))
-        initial = (Game emptyKeySet (Player (DPoint (0) 20 (0)) 0 0) [wal3, wal2, wal1, floor] [collid,colfloor])
+        initial = (Game emptyKeySet (Player (DPoint (0) 20 (0)) 0 0) [wal3, wal2, wal1, floor, testSprite] [collid,colfloor])
         --initial = (Game emptyKeySet (Player (DPoint 0 0 0) 0 0) [wal3])
 
 
