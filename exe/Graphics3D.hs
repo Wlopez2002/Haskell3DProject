@@ -18,20 +18,17 @@ class Renderable a where
     -- it's location.
     draw :: a -> Player -> Picture
 
-data Rendr = SPRT Sprite | DSQR DSquare
+-- Render code for the top level Rendr object.
 instance Renderable Rendr where
     draw (SPRT x) = draw x
     draw (DSQR x) = draw x
 
-instance Renderable DPoint where
-    draw (DPoint x y z) (Player (DPoint px 0 pz) rl ud) = scale 1 1 $ translate px 0 $ circleSolid 2
-    draw (DPoint x y z) (Player (DPoint px py pz) rl ud) = scale py py $ translate px 0 $ circleSolid 2
 instance Show DPoint where
     show (DPoint x y z) = "(" ++ show x ++ "," ++ show y ++ "," ++ show z ++ ")"
 
-data Sprite = Sprite {p :: DPoint, picts :: [Picture]}
+-- Render code for sprites
 instance Renderable Sprite where
-    draw s (Player playerPoint rl ud) = 
+    draw s (Player playerPoint hp rl ud) = 
         if (isBehind (DPoint rx ry rz))
             then
                 Polygon [(0,0)]
@@ -46,21 +43,16 @@ instance Renderable Sprite where
 
             (DPoint rx ry rz) = rotateDP sc rl ud
 
-data DSquare = DSquare {sp1 :: DPoint,sp2 :: DPoint,sp3 :: DPoint,sp4 :: DPoint, c :: Color}
+-- Render code for DSquares.
+-- TODO: This code is still a glitchy
 instance Renderable DSquare where
-    draw square (Player playerPoint rl ud) = 
+    draw square (Player playerPoint hp rl ud) = 
         -- if every point is behind the player do not draw the square.
         if (isBehind rp1 && isBehind rp2 && isBehind rp3 && isBehind rp4)
             then
                 Polygon [(0,0)]
             else 
                 color c $ Polygon [(projDP rp1), (projDP rp2), (projDP rp3), (projDP rp4)]  
-                --Pictures [
-                --    color c $ Polygon [(projDP rp1), (projDP rp2), (projDP rp3), (projDP rp4)],
-                --    translate (-200) (-200) $ scale 0.1 0.1 $ Text (show (projDP rp1) ++ " " ++ show (projDP rp2) ++ " "++show (projDP rp3) ++ " "++show (projDP rp4)),
-                --    translate (-200) (-250) $ scale 0.1 0.1 $ Text (show rp1 ++ " " ++ show rp2 ++ " " ++ show rp3 ++ " "++show rp4)
-                --]
-
         where
             -- I need some kind of way to clip the points so they aren't at an odd depth.
             (DPoint px py pz) = playerPoint
@@ -70,6 +62,12 @@ instance Renderable DSquare where
             rp2 = rotateDP (getDiff sp2 playerPoint) rl ud
             rp3 = rotateDP (getDiff sp3 playerPoint) rl ud
             rp4 = rotateDP (getDiff sp4 playerPoint) rl ud
+
+-- Moves a DSquare by a DPoint
+translateDSquare :: DSquare -> DPoint -> DSquare
+translateDSquare square point = (DSquare (addDP point sp1) (addDP point sp2) (addDP point sp3) (addDP point sp4) c)
+    where
+        (DSquare sp1 sp2 sp3 sp4 c) = square
 
 -- projects the DPoint into a 2d plane
 -- use screen dimensions/2 for weights, currently 400 and 300.
@@ -82,13 +80,20 @@ projDP (DPoint x y z) =
             then (400*(x*(abs z)),300*(y*(abs z)))
             -- not sure what to do then -1 < z < 1
             -- for now i just have it use z = 1
-            else (400*(x),300*(y))
+            else (400*(x/z),300*(y/z))
         else (400*(x/z),300*(y/z))
 
  -- checks if a Dpoint is behind the player. Use for relative DPoint
 isBehind :: DPoint -> Bool
 isBehind (DPoint x y z) = if (z <= 0) then True else False
 
+
+{-
+TODO: While this works it leads to issues, especialy with floors, as other objects may
+be on average closer to the player when they should be further. Instead of averaging
+the distancesfor DSquares find if it's distance based on the actual plane.
+-}
+-- Sorts Rendr Elements by their distance to a DPoint.
 sortDrawElements :: DPoint -> [Rendr] -> [Rendr]
 sortDrawElements pl s = fst $ unzip $ sortBy (flip compare `on` snd) (map (h pl) s)
     where

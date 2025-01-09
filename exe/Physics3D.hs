@@ -4,34 +4,9 @@ import Base3D
 
 {-
 This file contains all the needed code for physics, collisions, and
-interactions.
+interactions. If there is a data structure multiple files need to invoke
+it is here.
 -}
-
--- A box that defines colision. It holds a function
--- Player -> Player in case that is needed.
-data CollisionBox = CollisionBox {
-    bcanEnter :: Bool,
-    bfunc :: Player -> Player,
-    borigin :: DPoint,
-    p1 :: DPoint,
-    p2 :: DPoint,
-    p3 :: DPoint,
-    p4 :: DPoint,
-    p5 :: DPoint,
-    p6 :: DPoint,
-    p7 :: DPoint,
-    p8 :: DPoint
-}
-
--- Defines a circle for collision
-data CollisionCircle = CollisionCircle {
-    ccanEnter :: Bool,
-    cfunc :: Player -> Player,
-    corigin :: DPoint,
-    radius :: Float
-}
-
-data Collider = ColBox CollisionBox | ColCir CollisionCircle
 
 -- rotates a collider horizontally.
 -- TODO: Add rotation for circle collider
