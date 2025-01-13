@@ -2,6 +2,7 @@ module Main where
 import Prelude hiding (init)
 import Graphics3D
 import Base3D
+import Data.List
 import Physics3D
 import Graphics.Gloss
 import Graphics.Gloss.Interface.Pure.Game
@@ -14,11 +15,11 @@ window = InWindow ("Haskell 3D Project") (800,600) (10,10)
 
 render :: Game -> Picture
 render game = 
-    let playerCoords = translate (-390) (290) $ scale 0.1 0.1 $ Text (show x ++ ", " ++ show y ++ ", " ++ show z ++ ", " ++ show rl ++ ","  ++ show ud)
-        playerData = translate (-390) (280) $ scale 0.1 0.1 $ Text ("HealthL " ++ show hp)
+    let playerCoords = translate (-390) (290) $ scale 0.1 0.1 $ Text (show x ++ ", " ++ show y ++ ", " ++ show z ++ ", " ++ show rl ++ ","  ++ show ud ++ ", Entity Count: " ++ show (length entities) ++ ", Time: " ++ show gTime )
+        playerData = translate (-390) (270) $ scale 0.2 0.2 $ Text ("Health: " ++ show hp)
     in Pictures [Pictures $ map (\x -> draw x player) (sortDrawElements (DPoint x y z) (xs ++ sprites)), playerCoords, playerData]
     where 
-        (Game k player entities xs w) = game -- xs needs to be sorted by average distance that way it doesn't draw whats behind
+        (Game k player entities xs w gTime) = game -- xs needs to be sorted by average distance that way it doesn't draw whats behind
         sprites = stripEntitySprites entities
         (Player (DPoint x y z) hp rl ud) = player
         
@@ -29,7 +30,7 @@ render game =
 -- TODO: Find a way to make a circular collider with only one point and values which
 -- determine it's size
 itter :: Float -> Game -> Game
-itter dt (Game k p e t w) = (Game k (Player (DPoint x' y' z') nhp nrl nud) e t w) 
+itter dt (Game k p e t w gTime) = foldl runEGBev game' entitieAEM
     where 
         nextP = movePlayer p k
         (Player (DPoint nx ny nz) nhp nrl nud) = nextP
@@ -41,6 +42,21 @@ itter dt (Game k p e t w) = (Game k (Player (DPoint x' y' z') nhp nrl nud) e t w
         x' = if (or (map (cIntersects xcol) w)) then oldx else nx
         y' = if (or (map (cIntersects ycol) w)) then oldy else ny
         z' = if (or (map (cIntersects zcol) w)) then oldz else nz
+
+        -- This number shouldn't get high enough to break things, but keep in mind it is never
+        -- reset.
+        gTime' = gTime + dt
+        
+        gameAPM = (Game k (Player (DPoint x' y' z') nhp nrl nud) e t w gTime') 
+
+        entitieAEM = map (\x -> runEMBev x gameAPM) e
+
+        game' = (Game k (Player (DPoint x' y' z') nhp nrl nud) entitieAEM t w gTime') 
+
+        runEMBev :: Entity -> Game -> Entity
+        runEMBev (Entity tid iip eloc sprite mBev lastEx gBev) g = (Entity tid iip (mBev eloc g) sprite mBev lastEx gBev) 
+        runEGBev :: Game -> Entity -> Game
+        runEGBev g (Entity tid iip eloc sprite mBev lastEx gBev) = gBev (Entity tid iip eloc sprite mBev lastEx gBev) g
 
 -- Takes a point and moves it based on a KeySet.
 -- It is overcomplicated and could use future revisions
@@ -115,59 +131,80 @@ main = play window white 60 initialGame render handleKeys itter
                 (DPoint 30 (-11) 30) (DPoint 30 (-11) (-30)) (DPoint (-30) (-11) (-30)) (DPoint (-30) (-11) 30)
             ))
 
-        testEnemyMB = \(DPoint x y z) g -> (DPoint x y z)
-        testEnemy = (Entity (DPoint 0 1 (-10)) testSprite testEnemyMB (\x -> x))
+        testEnemy = (Entity 0 0 (DPoint 0 10 (-10)) testSprite (\a b -> a) 0 testMEFB)
+        testEnemy2 = (Entity 0 1 (DPoint (-10) 10 0) testSprite (\a b -> a) 0 testMEFB)
         
         walls = [wal3, wal2, wal1, floor]
         colls = [collid,colfloor]
-        entities = [testEnemy]
+        entities = [testEnemy,testEnemy2]
         initialPlayer = (Player (DPoint (0) 20 (0)) 10 0 0)
-        initialGame = (Game emptyKeySet initialPlayer entities walls colls)
--- Makes a fireball entity. it moves in the direction
+        initialGame = (Game emptyKeySet initialPlayer entities walls colls 0)
+
+-- Makes a fireball entity. it moves in a direction
 -- of the player.
---testMEFB :: Game -> Game
+-- TODO: For some reason created fireballs aren't apearing.
+testMEFB :: Entity -> Game -> Game
+testMEFB entity (Game keys player entities walls colls gTime) = 
+    if ((lastEx + 2) < gTime)
+        then (Game keys player (entities' ++ [fireball]) walls colls gTime)
+        else (Game keys player entities walls colls gTime)
+    where
+        (Entity tid iid loc sprite mBev lastEx gBev) = entity 
+        testSprite = (Sprite (DPoint 0 0 0) [color blue $ Polygon [(1000,1000),(1000,-1000),(-1000,-1000),(-1000,1000)]])
+        testFBMB = \(DPoint x y z) g -> (DPoint (x+0.5) y z)
+        fireball = (Entity 1 (length entities) loc testSprite testFBMB gTime testFBG)
+        entities' = replace entity (Entity tid iid loc sprite mBev gTime gBev) entities
+
+-- Game test for fireball, deletes itself if it runs into a wall.
+testFBG :: Entity -> Game -> Game
+testFBG entity (Game keys player entities walls colls gTime) =
+    if ((lastEx + 8) < gTime)
+        then (Game keys player (delete entity entities) walls colls gTime) 
+        else (Game keys player entities walls colls gTime)
+    where
+        (Entity tid iid loc sprite mBev lastEx gBev) = entity 
 
 -- x left right, z forward backward, y up down, r rotate left right
 -- Takes key input for the game, most just move the player.
 handleKeys :: Event -> Game -> Game
-handleKeys (EventKey (Char 'd') Down _ _) (Game k p e t w)   = (Game (KeySet u d l True f b rl rr ru rd) p e t w)
+handleKeys (EventKey (Char 'd') Down _ _) (Game k p e t w gt)   = (Game (KeySet u d l True f b rl rr ru rd) p e t w gt)
     where (KeySet u d l r f b rl rr ru rd) = k
-handleKeys (EventKey (Char 'd') up _ _) (Game k p e t w)     = (Game (KeySet u d l False f b rl rr ru rd) p e t w)
+handleKeys (EventKey (Char 'd') up _ _) (Game k p e t w gt)     = (Game (KeySet u d l False f b rl rr ru rd) p e t w gt)
     where (KeySet u d l r f b rl rr ru rd) = k
-handleKeys (EventKey (Char 'a') Down _ _) (Game k p e t w)   = (Game (KeySet u d True r f b rl rr ru rd) p e t w)
+handleKeys (EventKey (Char 'a') Down _ _) (Game k p e t w gt)   = (Game (KeySet u d True r f b rl rr ru rd) p e t w gt)
     where (KeySet u d l r f b rl rr ru rd) = k
-handleKeys (EventKey (Char 'a') up _ _) (Game k p e t w)     = (Game (KeySet u d False r f b rl rr ru rd) p e t w)
+handleKeys (EventKey (Char 'a') up _ _) (Game k p e t w gt)     = (Game (KeySet u d False r f b rl rr ru rd) p e t w gt)
     where (KeySet u d l r f b rl rr ru rd) = k
-handleKeys (EventKey (Char 'w') Down _ _) (Game k p e t w)   = (Game (KeySet u d l r True b rl rr ru rd) p e t w)
+handleKeys (EventKey (Char 'w') Down _ _) (Game k p e t w gt)   = (Game (KeySet u d l r True b rl rr ru rd) p e t w gt)
     where (KeySet u d l r f b rl rr ru rd) = k
-handleKeys (EventKey (Char 'w') up _ _) (Game k p e t w)     = (Game (KeySet u d l r False b rl rr ru rd) p e t w)
+handleKeys (EventKey (Char 'w') up _ _) (Game k p e t w gt)     = (Game (KeySet u d l r False b rl rr ru rd) p e t w gt)
     where (KeySet u d l r f b rl rr ru rd) = k
-handleKeys (EventKey (Char 's') Down _ _) (Game k p e t w)   = (Game (KeySet u d l r f True rl rr ru rd) p e t w)
+handleKeys (EventKey (Char 's') Down _ _) (Game k p e t w gt)   = (Game (KeySet u d l r f True rl rr ru rd) p e t w gt)
     where (KeySet u d l r f b rl rr ru rd) = k
-handleKeys (EventKey (Char 's') up _ _) (Game k p e t w)     = (Game (KeySet u d l r f False rl rr ru rd) p e t w)
+handleKeys (EventKey (Char 's') up _ _) (Game k p e t w gt)     = (Game (KeySet u d l r f False rl rr ru rd) p e t w gt)
     where (KeySet u d l r f b rl rr ru rd) = k
-handleKeys (EventKey (Char 'z') Down _ _) (Game k p e t w)   = (Game (KeySet True d l r f b rl rr ru rd) p e t w)
+handleKeys (EventKey (Char 'z') Down _ _) (Game k p e t w gt)   = (Game (KeySet True d l r f b rl rr ru rd) p e t w gt)
     where (KeySet u d l r f b rl rr ru rd) = k
-handleKeys (EventKey (Char 'z') up _ _) (Game k p e t w)     = (Game (KeySet False d l r f b rl rr ru rd) p e t w)
+handleKeys (EventKey (Char 'z') up _ _) (Game k p e t w gt)     = (Game (KeySet False d l r f b rl rr ru rd) p e t w gt)
     where (KeySet u d l r f b rl rr ru rd) = k
-handleKeys (EventKey (Char 'x') Down _ _) (Game k p e t w)   = (Game (KeySet u True l r f b rl rr ru rd) p e t w)
+handleKeys (EventKey (Char 'x') Down _ _) (Game k p e t w gt)   = (Game (KeySet u True l r f b rl rr ru rd) p e t w gt)
     where (KeySet u d l r f b rl rr ru rd) = k
-handleKeys (EventKey (Char 'x') up _ _) (Game k p e t w)     = (Game (KeySet u False l r f b rl rr ru rd) p e t w)
+handleKeys (EventKey (Char 'x') up _ _) (Game k p e t w gt)     = (Game (KeySet u False l r f b rl rr ru rd) p e t w gt)
     where (KeySet u d l r f b rl rr ru rd) = k
-handleKeys (EventKey (SpecialKey KeyLeft) Down _ _) (Game k p e t w)    = (Game (KeySet u d l r f b True rr ru rd) p e t w)
+handleKeys (EventKey (SpecialKey KeyLeft) Down _ _) (Game k p e t w gt)    = (Game (KeySet u d l r f b True rr ru rd) p e t w gt)
     where (KeySet u d l r f b rl rr ru rd) = k
-handleKeys (EventKey (SpecialKey KeyLeft) up _ _) (Game k p e t w)      = (Game (KeySet u d l r f b False rr ru rd) p e t w)
+handleKeys (EventKey (SpecialKey KeyLeft) up _ _) (Game k p e t w gt)      = (Game (KeySet u d l r f b False rr ru rd) p e t w gt)
     where (KeySet u d l r f b rl rr ru rd) = k
-handleKeys (EventKey (SpecialKey KeyRight) Down _ _) (Game k p e t w)   = (Game (KeySet u d l r f b rl True ru rd) p e t w)
+handleKeys (EventKey (SpecialKey KeyRight) Down _ _) (Game k p e t w gt)   = (Game (KeySet u d l r f b rl True ru rd) p e t w gt)
     where (KeySet u d l r f b rl rr ru rd) = k
-handleKeys (EventKey (SpecialKey KeyRight) up _ _) (Game k p e t w)     = (Game (KeySet u d l r f b rl False ru rd) p e t w)
+handleKeys (EventKey (SpecialKey KeyRight) up _ _) (Game k p e t w gt)     = (Game (KeySet u d l r f b rl False ru rd) p e t w gt)
     where (KeySet u d l r f b rl rr ru rd) = k
-handleKeys (EventKey (SpecialKey KeyUp) Down _ _) (Game k p e t w)      = (Game (KeySet u d l r f b rl rr True rd) p e t w)
+handleKeys (EventKey (SpecialKey KeyUp) Down _ _) (Game k p e t w gt)      = (Game (KeySet u d l r f b rl rr True rd) p e t w gt)
     where (KeySet u d l r f b rl rr ru rd) = k
-handleKeys (EventKey (SpecialKey KeyUp) up _ _) (Game k p e t w )       = (Game (KeySet u d l r f b rl rr False rd) p e t w)
+handleKeys (EventKey (SpecialKey KeyUp) up _ _) (Game k p e t w gt)        = (Game (KeySet u d l r f b rl rr False rd) p e t w gt)
     where (KeySet u d l r f b rl rr ru rd) = k
-handleKeys (EventKey (SpecialKey KeyDown) Down _ _) (Game k p e t w)    = (Game (KeySet u d l r f b rl rr ru True) p e t w)
+handleKeys (EventKey (SpecialKey KeyDown) Down _ _) (Game k p e t w gt)    = (Game (KeySet u d l r f b rl rr ru True) p e t w gt)
     where (KeySet u d l r f b rl rr ru rd) = k
-handleKeys (EventKey (SpecialKey KeyDown) up _ _) (Game k p e t w)      = (Game (KeySet u d l r f b rl rr ru False) p e t w)
+handleKeys (EventKey (SpecialKey KeyDown) up _ _) (Game k p e t w gt)      = (Game (KeySet u d l r f b rl rr ru False) p e t w gt)
     where (KeySet u d l r f b rl rr ru rd) = k
 handleKeys _ g = g

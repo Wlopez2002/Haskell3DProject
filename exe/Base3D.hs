@@ -16,7 +16,8 @@ data Game = Game {
     player :: Player,
     entities :: [Entity],
     draws :: [Rendr],
-    walls :: [Collider]
+    walls :: [Collider],
+    time :: Float
 }
 
 data Player = Player {
@@ -27,15 +28,21 @@ data Player = Player {
 }
 
 data Entity = Entity {
+    typeID :: Int,
+    instanceID :: Int,
     elocation :: DPoint,
     eRendr :: Sprite,
 
     -- Behavior to move the entity within the game.
-    mBehavior :: DPoint -> Game -> DPoint,
+    movementBehavior :: DPoint -> Game -> DPoint,
 
     -- Behavior to affect the game.
-    wBehavior :: Game -> Game
+    lastEx :: Float, -- The last time gameBehavior was executed
+    gameBehavior :: Entity -> Game -> Game
 }
+
+instance Eq Entity where
+    (Entity tid iid _ _ _ _ _) == (Entity tid2 iid2 _ _ _ _ _) = (tid == tid2) && (iid == iid2)
 
 data KeySet = KeySet {
     up :: Bool, down :: Bool,
@@ -73,6 +80,7 @@ data Collider = ColBox CollisionBox | ColCir CollisionCircle
 
 data Rendr = SPRT Sprite | DSQR DSquare
 
+-- TODO: Switch to gloss bitmap and load from resources.
 data Sprite = Sprite {p :: DPoint, picts :: [Picture]}
 
 data DSquare = DSquare {sp1 :: DPoint,sp2 :: DPoint,sp3 :: DPoint,sp4 :: DPoint, c :: Color}
@@ -82,7 +90,7 @@ stripEntitySprites :: [Entity] -> [Rendr]
 stripEntitySprites [] = []
 stripEntitySprites (x:xs) = (SPRT (Sprite (addDP l dp) picts)) : (stripEntitySprites xs)
     where
-        (Entity l s _ _) = x
+        (Entity _ _ l s _ _ _) = x
         (Sprite dp picts) = s
 
 --Rotates a point around the origin by r radians
@@ -109,3 +117,7 @@ getDiff (DPoint x2 y2 z2) (DPoint x1 y1 z1) =
 addDP :: DPoint -> DPoint -> DPoint 
 addDP (DPoint x2 y2 z2) (DPoint x1 y1 z1) =
     (DPoint (x2+x1) (y2+y1) (z2+z1))
+
+replace :: Eq a => a -> a -> [a] -> [a]
+replace old new [] = []
+replace old new (x:xs) = if (old == x) then (new:(replace old new xs)) else (x:(replace old new xs))

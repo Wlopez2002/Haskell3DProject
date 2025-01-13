@@ -10,6 +10,9 @@ import Data.Function (on)
 This file contains all the needed code to handle graphics.
 -}
 
+-- The max distance before an object disappears
+fallOffDistance = 1000.0
+
 class Renderable a where
     -- draw takes the Renderable class, the players point and produces a picture
     -- from it. A draw function for a single pount would take the absolute DPoint
@@ -29,7 +32,7 @@ instance Show DPoint where
 -- Render code for sprites
 instance Renderable Sprite where
     draw s (Player playerPoint hp rl ud) = 
-        if (isBehind (DPoint rx ry rz))
+        if ((isBehind (DPoint rx ry rz)) || ((getDistance playerPoint sp) > fallOffDistance))
             then
                 Polygon [(0,0)]
             else
@@ -47,8 +50,8 @@ instance Renderable Sprite where
 -- TODO: This code is still a glitchy
 instance Renderable DSquare where
     draw square (Player playerPoint hp rl ud) = 
-        -- if every point is behind the player do not draw the square.
-        if (isBehind rp1 && isBehind rp2 && isBehind rp3 && isBehind rp4)
+        -- if every point is behind the player or it is too far away do not draw the square.
+        if ((isBehind rp1 && isBehind rp2 && isBehind rp3 && isBehind rp4) || (squareDistance playerPoint square) > fallOffDistance)
             then
                 Polygon [(0,0)]
             else 
@@ -87,7 +90,6 @@ projDP (DPoint x y z) =
 isBehind :: DPoint -> Bool
 isBehind (DPoint x y z) = if (z <= 0) then True else False
 
-
 {-
 TODO: While this works it leads to issues, especialy with floors, as other objects may
 be on average closer to the player when they should be further. Instead of averaging
@@ -95,11 +97,11 @@ the distancesfor DSquares find if it's distance based on the actual plane.
 -}
 -- Sorts Rendr Elements by their distance to a DPoint.
 sortDrawElements :: DPoint -> [Rendr] -> [Rendr]
-sortDrawElements pl s = fst $ unzip $ sortBy (flip compare `on` snd) (map (h pl) s)
+sortDrawElements pl s = fst $ unzip $ sortBy (flip compare `on` snd) (map (rendrDistance pl) s)
     where
-        h :: DPoint -> Rendr -> (Rendr, Float)
-        h pp (DSQR sqr) = (DSQR sqr, squareDistance pp sqr)
-        h pp (SPRT (Sprite sp picts)) = (SPRT (Sprite sp picts), getDistance pp sp)
+        rendrDistance :: DPoint -> Rendr -> (Rendr, Float)
+        rendrDistance pp (DSQR sqr) = (DSQR sqr, squareDistance pp sqr)
+        rendrDistance pp (SPRT (Sprite sp picts)) = (SPRT (Sprite sp picts), getDistance pp sp)
 
 -- Gets the average distance of the points of a DSquare from some point
 squareDistance :: DPoint -> DSquare -> Float
