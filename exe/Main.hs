@@ -159,10 +159,18 @@ testMEFB entity (Game keys player entities walls colls gTime) =
 testFBG :: Entity -> Game -> Game
 testFBG entity (Game keys player entities walls colls gTime) =
     if ((lastEx + 8) < gTime)
-        then (Game keys player (delete entity entities) walls colls gTime) 
-        else (Game keys player entities walls colls gTime)
+        then if (cIntersects playerColBox fbColBox)
+            then (Game keys playerHit (delete entity entities) walls colls gTime) 
+            else (Game keys player (delete entity entities) walls colls gTime) 
+        else if (cIntersects playerColBox fbColBox)
+            then (Game keys playerHit (delete entity entities) walls colls gTime) 
+            else (Game keys player entities walls colls gTime)
     where
         (Entity tid iid loc sprite mBev lastEx gBev) = entity 
+        (Player (DPoint x y z) hp ro ra) = player
+        playerHit = (Player (DPoint x y z) (hp-1) ro ra)
+        playerColBox = rotateColliderH ro (boxAroundPoint False id (DPoint x y z) 0.5 5 0.5 0)
+        fbColBox = boxAroundPoint False id loc 1 1 1 0
 
 -- x left right, z forward backward, y up down, r rotate left right
 -- Takes key input for the game, most just move the player.

@@ -51,7 +51,7 @@ instance Renderable Sprite where
 instance Renderable DSquare where
     draw square (Player playerPoint hp rl ud) = 
         -- if every point is behind the player or it is too far away do not draw the square.
-        if ((isBehind rp1 && isBehind rp2 && isBehind rp3 && isBehind rp4) || (squareDistance playerPoint square) > fallOffDistance)
+        if ((isBehind rp1 && isBehind rp2 && isBehind rp3 && isBehind rp4) || (dSquareDistance playerPoint square) > fallOffDistance)
             then
                 Polygon [(0,0)]
             else 
@@ -93,16 +93,16 @@ isBehind (DPoint x y z) = if (z <= 0) then True else False
 {-
 TODO: While this works it leads to issues, especialy with floors, as other objects may
 be on average closer to the player when they should be further. Instead of averaging
-the distancesfor DSquares find if it's distance based on the actual plane.
+the distances for DSquares find which should logicaly overlap the other.
 -}
 -- Sorts Rendr Elements by their distance to a DPoint.
 sortDrawElements :: DPoint -> [Rendr] -> [Rendr]
 sortDrawElements pl s = fst $ unzip $ sortBy (flip compare `on` snd) (map (rendrDistance pl) s)
     where
         rendrDistance :: DPoint -> Rendr -> (Rendr, Float)
-        rendrDistance pp (DSQR sqr) = (DSQR sqr, squareDistance pp sqr)
+        rendrDistance pp (DSQR sqr) = (DSQR sqr, dSquareDistance pp sqr)
         rendrDistance pp (SPRT (Sprite sp picts)) = (SPRT (Sprite sp picts), getDistance pp sp)
 
 -- Gets the average distance of the points of a DSquare from some point
-squareDistance :: DPoint -> DSquare -> Float
-squareDistance dp (DSquare p1 p2 p3 p4 c) = ((getDistance dp p1)+(getDistance dp p2)+(getDistance dp p3)+(getDistance dp p4))/4
+dSquareDistance :: DPoint -> DSquare -> Float
+dSquareDistance dp (DSquare p1 p2 p3 p4 c) = ((getDistance dp p1)+(getDistance dp p2)+(getDistance dp p3)+(getDistance dp p4))/4
