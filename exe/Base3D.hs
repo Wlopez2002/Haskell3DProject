@@ -31,7 +31,8 @@ data Entity = Entity {
     typeID :: Int,
     instanceID :: Int,
     elocation :: DPoint,
-    eRendr :: Sprite,
+    eRendr :: [Rendr],
+    --eRendr :: Sprite,
 
     -- Behavior to move the entity within the game.
     movementBehavior :: DPoint -> Game -> DPoint,
@@ -80,18 +81,25 @@ data Collider = ColBox CollisionBox | ColCir CollisionCircle
 
 data Rendr = SPRT Sprite | DSQR DSquare
 
--- TODO: Switch to gloss bitmap and load from resources.
+-- TODO: Since Picture includes bmp images find a way to load from resources.
 data Sprite = Sprite {p :: DPoint, picts :: [Picture]}
+
+--data RSprite = RSprite {P :: DPoint, roatation ::, pict ::  picts :: [Picture]}
 
 data DSquare = DSquare {sp1 :: DPoint,sp2 :: DPoint,sp3 :: DPoint,sp4 :: DPoint, c :: Color}
 
--- Strips the sprite from a list of entities
-stripEntitySprites :: [Entity] -> [Rendr]
-stripEntitySprites [] = []
-stripEntitySprites (x:xs) = (SPRT (Sprite (addDP l dp) picts)) : (stripEntitySprites xs)
+-- Strips the rendrs from a list of entities
+-- it also moves the renders based off the location
+-- of the entity
+stripEntityRendr :: [Entity] -> [Rendr]
+stripEntityRendr [] = []
+stripEntityRendr (x:xs) = (map (moveRender l) s) ++ (stripEntityRendr xs)
     where
         (Entity _ _ l s _ _ _) = x
-        (Sprite dp picts) = s
+
+moveRender :: DPoint -> Rendr -> Rendr
+moveRender p (SPRT (Sprite l picts)) = (SPRT (Sprite (addDP p l) picts))
+moveRender p (DSQR (DSquare p1 p2 p3 p4 c)) = (DSQR (DSquare (addDP p p1) (addDP p p2) (addDP p p3) (addDP p p4) c))
 
 --Rotates a point around the origin by r radians
 rotateDP :: DPoint -> Float -> Float -> DPoint

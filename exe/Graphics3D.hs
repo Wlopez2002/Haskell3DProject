@@ -34,7 +34,7 @@ instance Renderable Sprite where
     draw s (Player playerPoint hp rl ud) = 
         if ((isBehind (DPoint rx ry rz)) || ((getDistance playerPoint sp) > fallOffDistance))
             then
-                Polygon [(0,0)]
+                Blank
             else
                 Pictures (map (\x -> translate fx fy $ scale (1/rz) (1/rz) x) picts)
         where
@@ -53,8 +53,10 @@ instance Renderable DSquare where
         -- if every point is behind the player or it is too far away do not draw the square.
         if ((isBehind rp1 && isBehind rp2 && isBehind rp3 && isBehind rp4) || (dSquareDistance playerPoint square) > fallOffDistance)
             then
-                Polygon [(0,0)]
+                Blank
             else 
+                -- TODO: We should be able to use a texture for this, instead of or with a color
+                --BitmapSection 
                 color c $ Polygon [(projDP rp1), (projDP rp2), (projDP rp3), (projDP rp4)]  
         where
             -- I need some kind of way to clip the points so they aren't at an odd depth.
@@ -80,11 +82,14 @@ projDP (DPoint x y z) =
         then if (z < 0)
             -- Case where z is negative, mult instead of
             -- div, and use abs z.
-            then (400*(x*(abs z)),300*(y*(abs z)))
+            then (xt*(x*(abs z)),yt*(y*(abs z)))
             -- not sure what to do then -1 < z < 1
             -- for now i just have it use z = 1
-            else (400*(x/z),300*(y/z))
-        else (400*(x/z),300*(y/z))
+            else (xt*(x/z),yt*(y/z))
+        else (xt*(x/z),yt*(y/z))
+    where
+        xt = 400;
+        yt = 400;
 
  -- checks if a Dpoint is behind the player. Use for relative DPoint
 isBehind :: DPoint -> Bool
@@ -105,4 +110,9 @@ sortDrawElements pl s = fst $ unzip $ sortBy (flip compare `on` snd) (map (rendr
 
 -- Gets the average distance of the points of a DSquare from some point
 dSquareDistance :: DPoint -> DSquare -> Float
-dSquareDistance dp (DSquare p1 p2 p3 p4 c) = ((getDistance dp p1)+(getDistance dp p2)+(getDistance dp p3)+(getDistance dp p4))/4
+dSquareDistance dp (DSquare p1 p2 p3 p4 c) = (dp1+dp2+dp3+dp4)/4
+    where
+        dp1 = getDistance dp p1
+        dp2 = getDistance dp p2
+        dp3 = getDistance dp p3
+        dp4 = getDistance dp p4

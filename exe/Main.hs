@@ -17,10 +17,10 @@ render :: Game -> Picture
 render game = 
     let playerCoords = translate (-390) (290) $ scale 0.1 0.1 $ Text (show x ++ ", " ++ show y ++ ", " ++ show z ++ ", " ++ show rl ++ ","  ++ show ud ++ ", Entity Count: " ++ show (length entities) ++ ", Time: " ++ show gTime )
         playerData = translate (-390) (270) $ scale 0.2 0.2 $ Text ("Health: " ++ show hp)
-    in Pictures [Pictures $ map (\x -> draw x player) (sortDrawElements (DPoint x y z) (xs ++ sprites)), playerCoords, playerData]
+    in Pictures [Pictures $ map (\x -> draw x player) (sortDrawElements (DPoint x y z) (xs ++ entityRendrs)), playerCoords, playerData]
     where 
         (Game k player entities xs w gTime) = game -- xs needs to be sorted by average distance that way it doesn't draw whats behind
-        sprites = stripEntitySprites entities
+        entityRendrs = stripEntityRendr entities
         (Player (DPoint x y z) hp rl ud) = player
         
 
@@ -111,7 +111,7 @@ main = play window white 60 initialGame render handleKeys itter
         wal3 = DSQR (DSquare (DPoint 0 10 1) (DPoint 10 10 11) (DPoint 0 10 21) (DPoint (-10) 10 11) yellow)
         floor = DSQR (DSquare (DPoint 30 (-10) 30) (DPoint 30 (-10) (-30)) (DPoint (-30) (-10) (-30)) (DPoint (-30) (-10) 30) black)
 
-        testSprite = (Sprite (DPoint 0 0 0) [color red $ Polygon [(1000,1000),(1000,-1000),(-1000,-1000),(-1000,1000)], color green $ Polygon [(500,500),(500,-500),(-500,-500),(-500,500)]])
+        testSprite = SPRT (Sprite (DPoint 0 0 0) [color red $ Polygon [(1000,1000),(1000,-1000),(-1000,-1000),(-1000,1000)], color green $ Polygon [(500,500),(500,-500),(-500,-500),(-500,500)]])
 
         collid = (ColBox
             (CollisionBox
@@ -131,8 +131,8 @@ main = play window white 60 initialGame render handleKeys itter
                 (DPoint 30 (-11) 30) (DPoint 30 (-11) (-30)) (DPoint (-30) (-11) (-30)) (DPoint (-30) (-11) 30)
             ))
 
-        testEnemy = (Entity 0 0 (DPoint 0 10 (-10)) testSprite (\a b -> a) 0 testMEFB)
-        testEnemy2 = (Entity 0 1 (DPoint (-10) 10 0) testSprite (\a b -> a) 0 testMEFB)
+        testEnemy = (Entity 0 0 (DPoint 0 10 (-10)) [testSprite] (\a b -> a) 0 testMEFB)
+        testEnemy2 = (Entity 0 1 (DPoint (-10) 10 0) [testSprite] (\a b -> a) 0 testMEFB)
         
         walls = [wal3, wal2, wal1, floor]
         colls = [collid,colfloor]
@@ -142,7 +142,6 @@ main = play window white 60 initialGame render handleKeys itter
 
 -- Makes a fireball entity. it moves in a direction
 -- of the player.
--- TODO: For some reason created fireballs aren't apearing.
 testMEFB :: Entity -> Game -> Game
 testMEFB entity (Game keys player entities walls colls gTime) = 
     if ((lastEx + 2) < gTime)
@@ -150,9 +149,18 @@ testMEFB entity (Game keys player entities walls colls gTime) =
         else (Game keys player entities walls colls gTime)
     where
         (Entity tid iid loc sprite mBev lastEx gBev) = entity 
-        testSprite = (Sprite (DPoint 0 0 0) [color blue $ Polygon [(1000,1000),(1000,-1000),(-1000,-1000),(-1000,1000)]])
+
+        wal1 = DSQR (DSquare (DPoint 2.5 2.5 2.5) (DPoint 2.5 (-2.5) 2.5) (DPoint (-2.5) (-2.5) 2.5) (DPoint (-2.5) 2.5 2.5) blue)
+        wal2 = DSQR (DSquare (DPoint 2.5 2.5 (-2.5)) (DPoint 2.5 (-2.5) (-2.5)) (DPoint (-2.5) (-2.5) (-2.5)) (DPoint (-2.5) 2.5 (-2.5)) blue)
+        wal3 = DSQR (DSquare (DPoint 2.5 2.5 2.5) (DPoint 2.5 2.5 (-2.5)) (DPoint 2.5 (-2.5) (-2.5)) (DPoint 2.5 (-2.5) 2.5) red)
+        wal4 = DSQR (DSquare (DPoint (-2.5) 2.5 2.5) (DPoint (-2.5) 2.5 (-2.5)) (DPoint (-2.5) (-2.5) (-2.5)) (DPoint (-2.5) (-2.5) 2.5) red)
+        wal5 = DSQR (DSquare (DPoint 2.5 2.5 2.5) (DPoint (-2.5) 2.5 2.5) (DPoint (-2.5) 2.5 (-2.5)) (DPoint 2.5 2.5 (-2.5)) yellow)
+        wal6 = DSQR (DSquare (DPoint 2.5 (-2.5) 2.5) (DPoint (-2.5) (-2.5) 2.5) (DPoint (-2.5) (-2.5) (-2.5)) (DPoint 2.5 (-2.5) (-2.5)) yellow)
+
+        testRendr = [wal1,wal2,wal3,wal4,wal5,wal6]
+        --testSprite = SPRT (Sprite (DPoint 0 0 0) [color blue $ Polygon [(1000,1000),(1000,-1000),(-1000,-1000),(-1000,1000)]])
         testFBMB = \(DPoint x y z) g -> (DPoint (x+0.5) y z)
-        fireball = (Entity 1 (length entities) loc testSprite testFBMB gTime testFBG)
+        fireball = (Entity 1 (length entities) loc testRendr testFBMB gTime testFBG)
         entities' = replace entity (Entity tid iid loc sprite mBev gTime gBev) entities
 
 -- Game test for fireball, deletes itself if it runs into a wall.
@@ -171,6 +179,7 @@ testFBG entity (Game keys player entities walls colls gTime) =
         playerHit = (Player (DPoint x y z) (hp-1) ro ra)
         playerColBox = rotateColliderH ro (boxAroundPoint False id (DPoint x y z) 5 5 5 0)
         fbColBox = boxAroundPoint False id loc 1 1 1 0
+
 
 -- x left right, z forward backward, y up down, r rotate left right
 -- Takes key input for the game, most just move the player.
